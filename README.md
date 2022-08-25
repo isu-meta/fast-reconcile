@@ -1,6 +1,7 @@
 # FAST-reconcile
 
-An OpenRefine reconciliation service for [FAST](http://www.oclc.org/research/activities/fast.html?urlm=159754).
+An OpenRefine reconciliation service for [FAST](http://www.oclc.org/research/activities/fast.html?urlm=159754)
+written in Python.
 
 > FAST is available as Linked Data, which is an approach to publishing
 > data which enhances the utility of information on the web by making
@@ -9,6 +10,11 @@ An OpenRefine reconciliation service for [FAST](http://www.oclc.org/research/act
 
 The service queries the [FAST AutoSuggest API](http://www.oclc.org/developer/documentation/fast-linked-data-api/request-types)
 and provides normalized scores across queries for reconciling in Refine.
+
+## Install
+
+Download the code. On the command line, enter the fast-reconcile directory.
+Optionally, set up a virtual environment. Run `pip install -r requirements.txt`.
 
 ## Usage
 
