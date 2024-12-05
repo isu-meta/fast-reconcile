@@ -35,7 +35,7 @@ try:
 
     requests_cache.install_cache("fast_cache")
 except ImportError:
-    app.logger.debug("No request cache found.")
+    app.logger.warning("No request cache found.")
 
 # Helper text processing
 import text
@@ -72,6 +72,15 @@ def make_uri(fast_id):
     """
     Prepare a FAST url from the ID returned by the API.
     """
+    # Added because FAST API used to return fast_id as `str` and now returns
+    # `list`. If OCLC's API returns a `list` it should be processed correctly.
+    # If it returns a `str` it will be processed as previously.
+    if isinstance(fast_id, list):
+        try:
+            fast_id = fast_id[0]
+        except IndexError:
+            fast_id = ""
+            app.logger.warning("No FID provided.")
     fid = fast_id.lstrip("fst").lstrip("0")
     fast_uri = fast_uri_base.format(fid)
     return fast_uri
@@ -123,6 +132,7 @@ def search(raw_query, query_type="/fast/all"):
         else:
             alt = ""
         fid = item.get("idroot")
+        app.logger.warning(f"FID is {fid}")
         fast_uri = make_uri(fid)
         # The FAST service returns many duplicates.  Avoid returning many of the
         # same result
@@ -198,6 +208,8 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--debug", action="store_true", default=False)
     parser.add_argument("-p", "--port", default=5000)
     args = parser.parse_args()
-    app.debug = args.debug
     port = int(args.port)
-    app.run(host="0.0.0.0", port=port)
+    if args.debug:
+        app.run(host="0.0.0.0", port=port, debug=True)
+    else:
+        app.run(host="0.0.0.0", port=port)
