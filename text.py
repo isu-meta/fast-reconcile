@@ -1,5 +1,5 @@
 """
-Taken from the Helmut project.
+Adapted from from the Helmut project.
 https://github.com/okfn/helmut/blob/master/helmut/text.py
 """
 
@@ -12,7 +12,7 @@ def normalize(text):
     spaces, removing symbols, diacritical marks (umlauts) and
     converting all newlines etc. to single spaces.
     """
-    text = text.lower()
+    text = text.lower().replace("the university of", "university of").strip()
     decomposed = ucnorm("NFKD", text)
     filtered = []
     for char in decomposed:
@@ -33,9 +33,15 @@ def normalize(text):
     text = "".join(filtered)
     while "  " in text:
         text = text.replace("  ", " ")
-    # remove hyphens
-    text = text.replace("-", " ")
-    text = text.strip()
+    # Remove unwanted characters
+    # Undocumented bugs in the SearchFAST/AssignFAST API cause it to
+    # choke on parantheses and colons, returning a 400: Bad Request error
+    # if they're part of the query. Replacing hyphens with a space because
+    # the original Helmut code did and it doesn't seem like it could do
+    # any harm.
+    tt = str.maketrans({"(": "", ")": "", ":": "", "-": " "})
+    text = text.translate(tt)
+
     return ucnorm("NFKC", text)
 
 

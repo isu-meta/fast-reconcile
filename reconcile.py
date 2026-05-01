@@ -3,28 +3,31 @@ An OpenRefine reconciliation service for the API provided by
 OCLC for FAST.
 
 See API documentation:
-http://www.oclc.org/developer/documentation/fast-linked-data-api/request-types
+https://www.oclc.org/developer/api/oclc-apis/fast-api/assign-fast.en.html
 
 This code is adapted from Michael Stephens:
 https://github.com/mikejs/reconcile-demo
 """
+
 import json
 from operator import itemgetter
-from sys import version_info
-from urllib.request import quote
+from urllib.parse import quote
 
 from flask import Flask
 from flask import request
 from flask import jsonify
 
 # For scoring results
-from fuzzywuzzy import fuzz
+from thefuzz import fuzz
 import requests
+
+# Helper text processing
+import text
+
 
 app = Flask(__name__)
 
 # some config
-api_base_url = "http://fast.oclc.org/searchfast/fastsuggest"
 # For constructing links to FAST.
 fast_uri_base = "http://id.worldcat.org/fast/{0}"
 
@@ -36,9 +39,6 @@ try:
     requests_cache.install_cache("fast_cache")
 except ImportError:
     app.logger.warning("No request cache found.")
-
-# Helper text processing
-import text
 
 # Map the FAST query indexes to service types
 default_query = {"id": "/fast/all", "name": "All FAST terms", "index": "suggestall"}
@@ -99,29 +99,38 @@ def jsonpify(obj):
         return jsonify(obj)
 
 
+def make_query_uri(query, query_index):
+    api_base_url = "http://fast.oclc.org/searchfast/fastsuggest"
+    # FAST API requires quotes around strings containing spaces
+    # https://developer.api.oclc.org/fastsearch-api#/FastSuggest%20API/get_fastsuggest
+
+    url = api_base_url + "?query=" + query
+    url += "&rows=30&queryReturn=suggestall%2Cidroot%2Cauth%2cscore&suggest=autoSubject"
+    url += "&queryIndex=" + query_index + "&wt=json"
+    app.logger.warning("FAST API url is " + url)
+
+    return url
+    
+
+
 def search(raw_query, query_type="/fast/all"):
     """
-    Hit the FAST API for names.
+    Query the SearchFAST/AssignFAST API.
     """
     out = []
     unique_fast_ids = []
-    query = (
-        text.normalize(raw_query).replace("the university of", "university of").strip()
-    )
+    query = text.normalize(raw_query)
     query_type_meta = [i for i in refine_to_fast if i["id"] == query_type]
     if query_type_meta == []:
         query_type_meta = default_query
     query_index = query_type_meta[0]["index"]
     try:
-        # FAST api requires spaces to be encoded as %20 rather than +
-        url = api_base_url + "?query=" + quote(query)
-        url += "&rows=30&queryReturn=suggestall%2Cidroot%2Cauth%2cscore&suggest=autoSubject"
-        url += "&queryIndex=" + query_index + "&wt=json"
-        app.logger.debug("FAST API url is " + url)
-        resp = requests.get(url)
+        uri = make_query_uri(query, query_index)
+        resp = requests.get(uri)
         results = resp.json()
+        app.logger.warning(f"RESULTS RAW JSON: {results}")
     except Exception as e:
-        app.logger.warning(e)
+        app.logger.warning(f"EXCEPTION: {e}")
         return out
     for item in results["response"]["docs"]:
         match = False
@@ -134,7 +143,7 @@ def search(raw_query, query_type="/fast/all"):
         fid = item.get("idroot")
         app.logger.warning(f"FID is {fid}")
         fast_uri = make_uri(fid)
-        # The FAST service returns many duplicates.  Avoid returning many of the
+        # The FAST service returns many duplicates. Avoid returning many of the
         # same result
         if fid in unique_fast_ids:
             continue
@@ -186,7 +195,8 @@ def reconcile():
     if queries:
         queries = json.loads(queries)
         results = {}
-        for (key, query) in queries.items():
+        for key, query in queries.items():
+            app.logger.warning(f"QUERY: {query}")
             qtype = query.get("type")
             # If no type is specified this is likely to be the initial query
             # so lets return the service metadata so users can choose what
@@ -194,6 +204,7 @@ def reconcile():
             if qtype is None:
                 return jsonpify(metadata)
             data = search(query["query"], query_type=qtype)
+            app.logger.warning(f"RESULT: {data}")
             results[key] = {"result": data}
         return jsonpify(results)
     # If neither a 'query' nor 'queries' parameter is supplied then
