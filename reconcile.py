@@ -38,12 +38,11 @@ try:
 
     requests_cache.install_cache("fast_cache")
 except ImportError:
-    app.logger.warning("No request cache found.")
+    app.logger.debug("No request cache found.")
 
 # Map the FAST query indexes to service types
-default_query = {"id": "/fast/all", "name": "All FAST terms", "index": "suggestall"}
-
 refine_to_fast = [
+    {"id": "/fast/all", "name": "All FAST terms", "index": "suggestall"},
     {"id": "/fast/geographic", "name": "Geographic Name", "index": "suggest51"},
     {"id": "/fast/corporate-name", "name": "Corporate Name", "index": "suggest10"},
     {"id": "/fast/personal-name", "name": "Personal Name", "index": "suggest00"},
@@ -52,11 +51,11 @@ refine_to_fast = [
     {"id": "/fast/topical", "name": "Topical", "index": "suggest50"},
     {"id": "/fast/form", "name": "Form", "index": "suggest55"},
 ]
-refine_to_fast.append(default_query)
 
+default_query = refine_to_fast[0]
 
-# Make a copy of the FAST mappings.
-# Minus the index for
+# Make a copy of the FAST mappings minus the index for the vocab selection menu
+# Why? Is this necessary? Investigate.
 query_types = [{"id": item["id"], "name": item["name"]} for item in refine_to_fast]
 
 # Basic service metadata. There are a number of other documented options
@@ -80,7 +79,7 @@ def make_uri(fast_id):
             fast_id = fast_id[0]
         except IndexError:
             fast_id = ""
-            app.logger.warning("No FID provided.")
+            app.logger.debug("No FID provided.")
     fid = fast_id.lstrip("fst").lstrip("0")
     fast_uri = fast_uri_base.format(fid)
     return fast_uri
@@ -101,13 +100,11 @@ def jsonpify(obj):
 
 def make_query_uri(query, query_index):
     api_base_url = "http://fast.oclc.org/searchfast/fastsuggest"
-    # FAST API requires quotes around strings containing spaces
-    # https://developer.api.oclc.org/fastsearch-api#/FastSuggest%20API/get_fastsuggest
 
     url = api_base_url + "?query=" + query
     url += "&rows=30&queryReturn=suggestall%2Cidroot%2Cauth%2cscore&suggest=autoSubject"
     url += "&queryIndex=" + query_index + "&wt=json"
-    app.logger.warning("FAST API url is " + url)
+    app.logger.debug("FAST API url is " + url)
 
     return url
     
@@ -128,9 +125,9 @@ def search(raw_query, query_type="/fast/all"):
         uri = make_query_uri(query, query_index)
         resp = requests.get(uri)
         results = resp.json()
-        app.logger.warning(f"RESULTS RAW JSON: {results}")
+        app.logger.debug(f"RESULTS RAW JSON: {results}")
     except Exception as e:
-        app.logger.warning(f"EXCEPTION: {e}")
+        app.logger.debug(f"EXCEPTION: {e}")
         return out
     for item in results["response"]["docs"]:
         match = False
@@ -141,7 +138,7 @@ def search(raw_query, query_type="/fast/all"):
         else:
             alt = ""
         fid = item.get("idroot")
-        app.logger.warning(f"FID is {fid}")
+        app.logger.debug(f"FID is {fid}")
         fast_uri = make_uri(fid)
         # The FAST service returns many duplicates. Avoid returning many of the
         # same result
@@ -196,7 +193,7 @@ def reconcile():
         queries = json.loads(queries)
         results = {}
         for key, query in queries.items():
-            app.logger.warning(f"QUERY: {query}")
+            app.logger.debug(f"QUERY: {query}")
             qtype = query.get("type")
             # If no type is specified this is likely to be the initial query
             # so lets return the service metadata so users can choose what
@@ -204,7 +201,7 @@ def reconcile():
             if qtype is None:
                 return jsonpify(metadata)
             data = search(query["query"], query_type=qtype)
-            app.logger.warning(f"RESULT: {data}")
+            app.logger.debug(f"RESULT: {data}")
             results[key] = {"result": data}
         return jsonpify(results)
     # If neither a 'query' nor 'queries' parameter is supplied then
