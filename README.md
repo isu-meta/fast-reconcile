@@ -8,8 +8,8 @@ written in Python.
 > references to persons, places, things, etc. more consistent and
 > linkable across domains.
 
-The service queries the [FAST AutoSuggest API](http://www.oclc.org/developer/documentation/fast-linked-data-api/request-types)
-and provides normalized scores across queries for reconciling in Refine.
+The service queries the [FAST AutoSuggest API](https://www.oclc.org/developer/api/oclc-apis/fast-api/assign-fast.en.html)
+and provides normalized scores across queries for reconciling in OpenRefine.
 
 ## Install
 
@@ -39,8 +39,8 @@ This can be especially useful if you're running multiple local OpenRefine servic
 To avoid conflicting with other network services that use reserved ports, use port
 numbers higher than 1023.
 
-If you'd like to run develop `fast-reconcile`, it can be helpful to use the `--debug`
-flag:
+If you'd like to do development work on  `fast-reconcile` or if you encounter errors,
+it can be helpful to use the `--debug` flag:
 ~~~~
 $ python reconcile.py --debug
 ~~~~
@@ -51,4 +51,5 @@ This code is available under the terms of the [3-Clause BSD license](https://git
 
 This is code is based on the [demo reconcilliation service](https://github.com/mikejs/reconcile-demo)
 written by Michael Stephens. It has been forked from Christina Harlow's [Python 3 adaptation](https://github.com/cmharlow/fast-reconcile)
-of Ted Lawless' original [fast-reconcile](https://github.com/lawlesst/fast-reconcile) service. 
+of Ted Lawless' original [fast-reconcile](https://github.com/lawlesst/fast-reconcile) service.
+It incorporates code from Friedrich Lindenberg's [Helmut](https://github.com/okfn/helmut/).
